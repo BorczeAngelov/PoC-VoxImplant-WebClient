@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-declare var VoxImplant: any;
+declare var VoxImplant: any; // will be loaded from index.html with line <script src="https://unpkg.com/voximplant-websdk"></script>
 
 @Injectable({
   providedIn: 'root'
@@ -14,55 +14,77 @@ export class VoxImplantWrapperService {
     this.voxSdk = VoxImplant.getInstance();
   }
 
-  async loginAsync(username: string, password: string): Promise<any> {
+  public async loginAsync(username: string, password: string): Promise<void> {
+    if (await this.isClientConnected()) {
+      alert('Already logged in!');
+      return;
+    }
+
+    await this.connectAndLogin(username, password);
+  }
+
+  private async isClientConnected(): Promise<boolean> {
+    const clientState = this.voxSdk.getClientState();
+    return clientState === "CONNECTED" || clientState === "LOGGING_IN";
+  }
+
+  private async connectAndLogin(username: string, password: string): Promise<void> {
     try {
-      const clientState = this.voxSdk.getClientState();
-
-      if (clientState !== "CONNECTED" && clientState !== "LOGGING_IN") {
-        await this.voxSdk.init({ micRequired: false });
-        await this.voxSdk.connect();
-
-        try {
-          const info = await this.voxSdk.login(username, password);
-          // Handle successful login here, e.g., save tokens
-          console.log('Login successful', info);
-        } catch (error) {
-          // Handle login error here
-          console.error('Login error', error);
-        }
-      } else {
-        alert('Already logged in!');
-      }
+      await this.voxSdk.init({ micRequired: false });
+      await this.voxSdk.connect();
+      await this.login(username, password);
     } catch (error) {
-      // Handle connection error here
-      alert('Cannot connect to the Voximplant cloud');
-      console.warn('Cannot connect', error);
+      this.handleConnectionError(error);
+    }
+  }
+  
+  private async login(username: string, password: string): Promise<void> {
+    try {
+      const info = await this.voxSdk.login(username, password);
+      console.log('Login successful', info);
+    } catch (error) {
+      console.error('Login error', error);
     }
   }
 
-  async callAsync(number: string): Promise<any> {
+  private handleConnectionError(error: any): void {
+    alert('Cannot connect to the VoxImplant cloud');
+    console.warn('Cannot connect', error);
+  }
+
+  public async callAsync(number: string): Promise<void> {
     if (this.currentCall) {
       console.warn("There is already an ongoing call.");
       return;
     }
+
+    await this.initiateCall(number);
+  }
+
+  private async initiateCall(number: string): Promise<void> {
     await this.voxSdk.setOperatorACDStatus(VoxImplant.OperatorACDStatuses.InService);
     this.currentCall = this.voxSdk.call(number);
     this.bindCallEvents();
-    return this.currentCall;
   }
 
-  async hangUpAsync(): Promise<void> {
+  public async hangUpAsync(): Promise<void> {
     if (!this.currentCall) {
       console.warn("No current call to hang up.");
       return;
     }
+
+    await this.terminateCall();
+  }
+
+  private async terminateCall(): Promise<void> {
     await this.currentCall.hangup();
     this.currentCall = null;
+    await this.resetACDStatus();
+  }
 
+  private async resetACDStatus(): Promise<void> {
     await this.voxSdk.setOperatorACDStatus(VoxImplant.OperatorACDStatuses.Online);
-    setTimeout(() => {
-      this.voxSdk.setOperatorACDStatus(VoxImplant.OperatorACDStatuses.Ready);
-    }, 400);
+    setTimeout(() => this.voxSdk.setOperatorACDStatus(VoxImplant.OperatorACDStatuses.Ready), 400);
   }
 
   private bindCallEvents(): void {
@@ -70,6 +92,7 @@ export class VoxImplantWrapperService {
       console.warn("No current call to attach event listener.");
       return;
     }
+
     this.currentCall.on(VoxImplant.CallEvents.Connected, () => this.onConnect());
     this.currentCall.on(VoxImplant.CallEvents.Failed, () => this.onCallFailed());
     this.currentCall.on(VoxImplant.CallEvents.Disconnected, () => this.onCallDisconnected());
@@ -78,9 +101,6 @@ export class VoxImplantWrapperService {
 
   private onConnect(): void {
     this.voxSdk.setOperatorACDStatus(VoxImplant.OperatorACDStatuses.InService);
-    // this.isAcceptButtonHidden = true;
-    // this.isHangupButtonHidden = false;
-    // this.isDeclineButtonHidden = true;
   }
 
   private onCallDisconnected(): void {
@@ -96,13 +116,12 @@ export class VoxImplantWrapperService {
       const messageData = JSON.parse(event.text);
       if (messageData.action === 'log_ai_response') {
         console.log('AI Response Transcript: ', messageData.data);
+
       } else if (messageData.action === 'log_ai_request') {
         console.log('AI Request Transcript: ', messageData.data);
-        // Handle the custom response as needed
       }
     } catch (error) {
       console.error('Error parsing AI message:', error);
     }
   }
-
 }

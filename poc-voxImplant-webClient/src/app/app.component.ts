@@ -1,11 +1,11 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { VoximplantLoggerComponent } from './voximplant-logger/voximplant-logger.component';
+import { VoxImplantLightCallerComponent } from './voxImplant/vox-implant-light-caller/vox-implant-light-caller.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, VoximplantLoggerComponent],
+  imports: [RouterOutlet, VoxImplantLightCallerComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
