@@ -1,0 +1,28 @@
+<h1>Voximplant demo logger collector</h1>
+
+<div>
+    <form>
+        <div>
+            <span> Username </span>
+            <input type="text" [(ngModel)]="user" name="user" required />
+        </div>
+        <div>
+            <span> Password </span>
+            <input type="password" [(ngModel)]="password" name="password" required />
+        </div>
+        <div>
+            <button type="button" (click)="onAuth()">Sign in</button>
+        </div>
+        <div *ngIf="loginFailedMessageVisible">Your password or username is incorrect</div>
+    </form>
+
+    <div>
+        <h2>Call form</h2>
+        <div>
+            <input type="tel" [(ngModel)]="callNumber" required placeholder="Phone number to call...">
+            <button [hidden]="!isHangupButtonHidden" (click)="startCall()">Call</button>
+            <button [hidden]="isHangupButtonHidden" (click)="hangUp()">Hangup</button>
+        </div>
+    </div>
+    <div *ngIf="!isIdCorrectNumberHidden">The phone number hasn`t been specified or doesn`t exist</div>
+</div>
