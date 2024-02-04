@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 
 declare var VoxImplant: any; // will be loaded from index.html with line <script src="https://unpkg.com/voximplant-websdk"></script>
 
@@ -9,6 +10,8 @@ export class VoxImplantWrapperService {
 
   private voxSdk: any;
   private currentCall: any = null;
+  private transcriptMessagesSubject = new BehaviorSubject<any[]>([]);
+  public transcriptMessages$ = this.transcriptMessagesSubject.asObservable();
 
   constructor() {
     this.voxSdk = VoxImplant.getInstance();
@@ -114,12 +117,13 @@ export class VoxImplantWrapperService {
   private onMessageReceived(event: any): void {
     try {
       const messageData = JSON.parse(event.text);
-      if (messageData.action === 'log_ai_response') {
-        console.log('AI Response Transcript: ', messageData.data);
 
+      if (messageData.action === 'log_ai_response') {
+        this.transcriptMessagesSubject.next([...this.transcriptMessagesSubject.value, 'AI Response Transcript: ' + messageData.data]);
       } else if (messageData.action === 'log_ai_request') {
-        console.log('AI Request Transcript: ', messageData.data);
+        this.transcriptMessagesSubject.next([...this.transcriptMessagesSubject.value, 'AI Request Transcript: ' + messageData.data]);
       }
+      
     } catch (error) {
       console.error('Error parsing AI message:', error);
     }
